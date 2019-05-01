@@ -3,7 +3,7 @@ from keras.layers import *
 
 # generates patches of size (patch_size, patch_size) from img and binary (!) label, where patches are taken from 'border_offset' pixels from border and with 'stride'
 # by default, border_offset is 0 and stride = patch_size
-def patch_generator(img, label, patch_size, label_percentage_threshold, stride=None, border_offset=0, ):
+def patch_generator(img, label, patch_size, label_percentage_threshold, stride=None, border_offset=0):
     if stride is None:
         stride = patch_size
     top_left_x = range(border_offset, img.shape[1] - border_offset - 2 * patch_size, stride)
