@@ -2,19 +2,47 @@ import numpy as np
 from keras.layers import *
 
 # generates patches of size (patch_size, patch_size) from img and binary (!) label, where patches are taken from 'border_offset' pixels from border and with 'stride'
-# by default, border_offset is 0 and stride = patch_size
-def patch_generator(img, label, patch_size, label_percentage_threshold, stride=None, border_offset=0):
-    if stride is None:
-        stride = patch_size
-    top_left_x = range(border_offset, img.shape[1] - border_offset - 2 * patch_size, stride)
-    top_left_y = range(border_offset, img.shape[0] - border_offset - 2 * patch_size, stride)
+# by default, border_offset is 0 and stride = patch_size.
+# If adaptive_stride is True, whole image will be cut to patches excluding border offset, using max possible stride for this size
+def patch_generator(img, label, patch_size, label_percentage_threshold, stride = None, border_offset = 0, adaptive_stride = False):
+    width = img.shape[1]
+    height = img.shape[0]
+    stride_x = patch_size
+    stride_y = patch_size
+    if stride is not None:
+        stride_x = stride
+        stride_y = stride
+
+    dx = 0
+    dy = 0
+    if width % patch_size != 0: dx = 1
+    if height % patch_size != 0: dy = 1
+    n_patches_x = (width - 2 * border_offset) // patch_size + dx
+    n_patches_y = (height - 2 * border_offset) // patch_size + dy
+
+    if adaptive_stride:
+        if n_patches_x == 1:
+            stride_x = patch_size
+        else:
+            stride_x = (width - 2*border_offset - patch_size) // (n_patches_x - 1)
+        if n_patches_y == 1:
+            stride_y = patch_size
+        else:
+            stride_y = (height - 2*border_offset - patch_size) // (n_patches_y - 1)
+    # off + x * stride + patch_size = size - off
+    # stride = (size - 2*off - patch_size) // x where x is number of patches. Namely, size // patch_size + 1 or +0 if size = n * patch_size
+    p_x = 0
+    p_y = 0
+    if (width - 2*border_offset) % n_patches_x == 0: p_x = 1
+    if (height - 2*border_offset) % n_patches_y == 0: p_y = 1
+    top_left_x = range(border_offset, width - border_offset - patch_size + p_x, stride_x)
+    top_left_y = range(border_offset, height - border_offset - patch_size + p_y, stride_y)
     for x in top_left_x:
         for y in top_left_y:
-            label_patch = label[x:x + patch_size, y:y + patch_size]
+            label_patch = label[y:y+patch_size, x:x+patch_size]
             avrg = np.average(label_patch)
             if avrg > label_percentage_threshold:
-                yield img[x:x + patch_size, y:y + patch_size], label_patch
-
+                yield img[y:y+patch_size, x:x+patch_size], label_patch
 
 # normalize to [0,1]
 def normalize(img):
